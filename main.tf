@@ -1,11 +1,15 @@
 provider "aws" {
-    region = "eu-north-1"
+    region = var.aws_region
+}
+
+locals {
+  project_name = "K8s_cluster"
 }
 
 resource "aws_vpc" "k8s-vpc" {
     cidr_block = "10.0.0.0/16"
     tags = {
-        Name = "k8s-vpc"
+        Name = "${local.project_name}-vpc"
     }
 }
 
@@ -14,7 +18,7 @@ resource "aws_subnet" "k8s-subnet" {
   cidr_block        = "10.0.0.0/24"
   map_public_ip_on_launch = true
   tags = {
-    Name = "k8s-cluster-subnet"
+    Name = "${local.project_name}-subnet"
   }
 }
 
@@ -74,35 +78,47 @@ resource "aws_security_group" "k8s-cluster-sg" {
 }
 
 resource "aws_instance" "master" {
-  ami           = "ami-0416c18e75bd69567"
-  instance_type = "t3.micro"
+  ami           = var.ami_id
+  instance_type = var.instance_type
   key_name      = "k8s-cluster-key"
   subnet_id     = aws_subnet.k8s-subnet.id
   vpc_security_group_ids = [aws_security_group.k8s-cluster-sg.id]
+  user_data = file("./create-ansible-user.sh")
+  tags = {
+    Name = "${local.project_name}-master"
+  }
 }
 
-resource "aws_instance" "node1" {
-  ami           = "ami-0416c18e75bd69567"
-  instance_type = "t3.micro"
-  key_name      = "k8s-cluster-key"
-  subnet_id     = aws_subnet.k8s-subnet.id
-  vpc_security_group_ids = [aws_security_group.k8s-cluster-sg.id]
-}
+# resource "aws_instance" "node1" {
+#   ami           = var.ami_id
+#   instance_type = var.instance_type
+#   key_name      = "k8s-cluster-key"
+#   subnet_id     = aws_subnet.k8s-subnet.id
+#   vpc_security_group_ids = [aws_security_group.k8s-cluster-sg.id]
+#   user_data = file("./create-ansible-user.sh")
+#   tags = {
+#     Name = "${local.project_name}-node1"
+#   }
+# }
 
-resource "aws_instance" "node2" {
-  ami           = "ami-0416c18e75bd69567"
-  instance_type = "t3.micro"
-  key_name      = "k8s-cluster-key"
-  subnet_id     = aws_subnet.k8s-subnet.id
-  vpc_security_group_ids = [aws_security_group.k8s-cluster-sg.id]
-}
+# resource "aws_instance" "node2" {
+#   ami           = var.ami_id
+#   instance_type = var.instance_type
+#   key_name      = "k8s-cluster-key"
+#   subnet_id     = aws_subnet.k8s-subnet.id
+#   vpc_security_group_ids = [aws_security_group.k8s-cluster-sg.id]
+#   user_data = file("./create-ansible-user.sh")
+#   tags = {
+#     Name = "${local.project_name}-node1"
+#   }
+# }
 
 output "master_public_ip" {
   value = aws_instance.master.public_ip
 }
-output "node1_public_ip" {
-  value = aws_instance.node1.public_ip
-}
-output "node2_public_ip" {
-  value = aws_instance.node2.public_ip
-}
+# output "node1_public_ip" {
+#   value = aws_instance.node1.public_ip
+# }
+# output "node2_public_ip" {
+#   value = aws_instance.node2.public_ip
+# }
